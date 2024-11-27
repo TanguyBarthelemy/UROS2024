@@ -1,0 +1,54 @@
+ID;Nomenclature;Libellé
+FL1;02.01.01.01;Abricot
+FL2;02.01.01.02;Cerise
+FL3;02.01.01.03;Châtaigne
+FL4;02.01.01.04;Clémentine
+FL5;02.01.01.05.01;Fraise allongée
+FL6;02.01.01.05.02;Fraise ronde
+FL7;02.01.01.06;Framboise
+FL8;02.01.01.07;Kiwi
+FL9;02.01.01.08;Noix
+FL10;02.01.01.09.01;Nectarine
+FL11;02.01.01.09.02;Pêche
+FL12;02.01.01.10.01;Poire d'été
+FL13;02.01.01.10.02;Poire hors été
+FL14;02.01.01.11.01;Pomme Gala
+FL15;02.01.01.11.02;Pomme Golden
+FL16;02.01.01.11.03;Pomme- autres variétés
+FL17;02.01.01.12;Prune
+FL18;02.01.01.13;Raisin
+FL19;02.01.02.01;Ail
+FL20;02.01.02.02;Artichaut
+FL21;02.01.02.03;Asperge
+FL22;02.01.02.04;Aubergine
+FL23;02.01.02.05;Bette
+FL24;02.01.02.06;Betterave rouge
+FL25;02.01.02.07;Carotte
+FL26;02.01.02.08;Céleri rave
+FL27;02.01.02.09;Champignon de Paris
+FL28;02.01.02.10.01;Chou brocoli
+FL29;02.01.02.10.02;Chou-fleur
+FL30;02.01.02.10.03;Chou pommé
+FL31;02.01.02.11;Concombre
+FL32;02.01.02.12;Courgette
+FL33;02.01.02.13;Echalote
+FL34;02.01.02.14;Endive
+FL35;02.01.02.15;Epinard
+FL36;02.01.02.16;Haricot à écosser
+FL37;02.01.02.17;Melon
+FL38;02.01.02.18;Navet
+FL39;02.01.02.19;Oignon de couleur
+FL40;02.01.02.20;Persil
+FL41;02.01.02.21;Poireau
+FL42;02.01.02.22;Poivron
+FL43;02.01.02.23;Potiron
+FL44;02.01.02.24;Radis
+FL45;02.01.02.25.01.01;Chicorée frisée
+FL46;02.01.02.25.01.02;Chicorée scarole
+FL47;02.01.02.25.02.01;Laitue Batavia
+FL48;02.01.02.25.02.02;Laitue à couper
+FL49;02.01.02.25.02.03;Laitue pommée
+FL50;02.01.02.25.03;Mâche
+FL51;02.01.02.26.01;Tomate hors petits fruits
+FL52;02.01.02.26.02;Tomate petits fruits
+FL53;02.01.02.27;Truffe
