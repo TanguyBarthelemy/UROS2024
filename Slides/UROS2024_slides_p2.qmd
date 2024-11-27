@@ -1,0 +1,987 @@
+---
+title: "R packages around JDemetra+ - Part 2"
+subtitle: "A versatile toolbox for time series analysis"
+author: "Anna Smyk and Tanguy Barthelemy (Insee, France)"
+format: 
+    beamer:
+        template-partials:
+            - toc.tex
+        include-in-header:
+          - text: |
+              \usepackage{fontspec}
+              \setmonofont{Fira Code}[
+                  Contextuals={Alternate}
+              ]
+              % \usepackage{listings}
+              % \usepackage{lstfiracode}
+              % \ActivateVerbatimLigatures
+              
+              \titlegraphic{\includegraphics[height=0.3\textheight]{img/Logo-Insee-JD.png}}
+              \renewcommand{\url}[1]{\textcolor{blue}{\underline{\href{#1}{#1}}}}
+        institute: "UROS Conference, Athens (GR), Nov 27th 2024"
+        theme: "Frankfurt"
+        toc-title: "Table of Contents"
+        highlight-style: "arrow"
+        toc: false
+        classoption: 
+            - "aspectratio=169"
+            - '`xcolor={dvipsnames}`{=latex}' 
+        slide-level: 3
+        toc-depth: 2
+        #colortheme: "seahorse"
+        navigation: "vertical"
+        section-titles: true
+editor: source
+---
+
+# rjd3 packages part 2
+
+
+## SA of High-Frequency data 
+
+
+```{r}
+#| label: loading-rjdverse
+#| echo: false
+#| eval: true
+
+# install.packages("remotes")
+library("dplyr")
+library("readr")
+library("rjd3toolkit")
+
+library("rjd3x13")
+library("rjd3tramoseats")
+
+library("rjd3filters")
+
+library("rjd3highfreq")
+library("rjd3x11plus")
+
+library("rjd3revisions")
+library("rjd3nowcasting")
+
+library("ggdemetra3")
+```
+
+
+### High-Frequency data specificities 
+
+Specificity: High-frequency data can display multiple and non integer periodicities:
+
+For example a daily series might display 3 periodicities:
+
+- **weekly** ($p = 7$):  Mondays are alike and different from Sundays (DOW)
+- **intra-monthly** ($p = 30.44$):  the last days of each month are different from the first ones (DOM)
+- **yearly** ($p = 365.25$):  from on year to another the 15th of June are alike, summer days are alike (DOY)
+
+Classic algorithms not directly applicable
+
+Two classes of solutions:
+- round periodicities (might involve imputing data) (extended STL,..)
+- use approximations for fractional backshift powers (extended X13-Arima and Tramo-Seats)
+
+For methodologiocal details see [JOS Paper, Webel and Smyk (2024)](https://journals.sagepub.com/doi/10.1177/0282423X241277602)
+
+
+### High-Frequency data in rjd3 packages
+
+In packages for HF data:
+
+- No constraint on data input as no TS structure (numeric vector)
+- Any seasonal patters, positive numbers
+
+- Linearisation with **fractional airline model** (correction for calendar effects and outlier detection)
+- Iterative decomposition (extended X-11 and Seats) starting with the highest frequency 
+
+
+### Packages perimeters 
+
+- **{rjd3highfreq}**: Extended airline model, AMB decomposition (extended SEATS)
+
+- **{rjd3x11plus}** contains all the Extended X11 functions for any (high) frequency data, and new trend estimation filters (weighted polynomials), depends on **{rjd3filters}**
+
+- **{rjd3stl}** (Loess based) and **{rjd3sts}** (SSF based) are the two other tools to decompose high (any)- periodicity data. 
+
+
+### Data initialization
+
+```{r}
+#| label: reading-data-hf-quarto
+#| echo: false
+#| eval: true
+
+library("dplyr")
+library("readr")
+df_daily <- read_csv2("../../Data/TS_daily_births_franceM_1968_2020.csv") |>
+    mutate(log_births = log(births))
+```
+
+```{r}
+#| label: reading-data-hdf
+#| echo: true
+#| eval: false
+df_daily <- read_csv2("Data/TS_daily_births_franceM_1968_2020.csv") |>
+    mutate(log_births = log(births))
+```
+
+
+### Canova-Hansen test to identify (multiple) seasonal patterns
+
+```{r}
+#| label: canova-hansen-test
+#| echo: true
+#| eval: false
+
+rjd3toolkit::seasonality_canovahansen_trigs(
+    data = df_daily$births,
+    periods = seq(from=1/367, to= 1/2, by=0.001))
+```
+
+
+![Canova Hansen seasonality test](img/FB_Canova.png){width=250px}
+
+
+### Linearization
+
+\footnotesize
+
+```{r}
+#| label: Linearization
+#| echo: true
+#| eval: false
+
+# calendar regressors can be defined with the rjd3toolkit package
+# see below how to generate the calendar (here frenchCalendar) first
+q <- rjd3toolkit::holidays(
+    calendar = frenchCalendar,
+    "1968-01-01", length = 200000, type = "All", nonworking = 7L
+)
+# pre-adjustment
+rjd3highfreq::fractionalAirlineEstimation(
+    y = df_daily$log_births, # here a daily series in log
+    x = q, # q = calendar
+    periods = 7, # approx  c(7,365.25)
+    ndiff = 2, ar = FALSE, mean = FALSE,
+    outliers = c("ao", "wo", "ls"),
+    # WO compensation
+    criticalValue = 0, # computed in the algorithm
+    precision = 1e-9, approximateHessian = TRUE
+)
+```
+
+See **{rjd3highfreq}** help pages
+
+### Decomposition with extended X-11
+
+\footnotesize
+
+```{r}
+#| label: extend-x11-decomposition
+#| echo: true
+#| eval: false
+
+# step 1: p = 7
+x11.dow <- rjd3x11plus::x11(
+    ts = exp(pre.mult$model$linearized),
+    period = 7, # DOW pattern
+    mul = TRUE,
+    trend.horizon = 9, # 1/2 Filter length : not too long vs p
+    trend.degree = 3, # Polynomial degree
+    trend.kernel = "Henderson", # Kernel function
+    trend.asymmetric = "CutAndNormalize", # Truncation method
+    seas.s0 = "S3X9", seas.s1 = "S3X9", # Seasonal filters
+    extreme.lsig = 1.5, extreme.usig = 2.5
+) # Sigma-limits
+# step 2: p = 365.25
+x11.doy <- rjd3highfreq::x11(x11.dow$decomposition$sa, # previous sa
+    period = 365.2425, # DOY pattern
+    mul = TRUE
+) # other parameters skipped here
+```
+
+
+### Decomposition with extended Seats
+
+```{r}
+#| label: decomposition-seats
+#| echo: true
+#| eval: false
+
+# step 1: p = 7
+# step 2: p = 365.25
+amb.doy <- rjd3highfreq::fractionalAirlineDecomposition(
+    amb.dow$decomposition$sa, # DOW-adjusted linearised data
+    period = 365.2425, # DOY pattern
+    sn = FALSE, # Signal (SA)-noise decomposition
+    stde = FALSE, # Compute standard deviations
+    nbcasts = 0, nfcasts = 0
+) # Numbers of back- and forecasts
+```
+
+# Revision Analysis 
+
+```{r}
+#| label: loading-rjd3revisions
+#| echo: true
+#| eval: true
+
+library("rjd3revisions")
+```
+
+The package **{rjd3revisions}** performs **revision analysis**. 
+
+It offers a battery of relevant tests on revisions and submit a visual report including both the main results and their interpretation. The tool can perform analysis on different types of revision intervals and on different vintage views. 
+
+The vignette is [here](https://rjdverse.github.io/rjd3revisions/articles/rjd3revisions.html).
+
+
+### What is revision analysis?
+
+**Revision analysis** is composed on a selection of **parametric tests** which enable the users to detect potential bias (both mean and regression bias) and other sources of inefficiency in preliminary estimates.
+
+
+### Data structure
+
+Your input data must be in a specific format: long, vertical or horizontal.
+
+There are 2 types of period in the study of revisions:
+
+- the `time_period`, which designates the reference period to which the value refers
+- the `revision_date`, which designates the date on which the value was published
+
+For example, for a series, the September 2023 point may be published for the first time in October 2023, then revised in November 2023 and even in September 2024.
+
+```{r}
+#| label: init_data
+#| echo: false
+#| eval: true
+
+long_format <- data.frame(
+    rev_date = as.Date(c(15370, 15370, 15370, 15370, 15379, 15379,
+                           15379, 15379, 15487, 15487, 15487, 15487)),
+    time_period = c("2012M01", "2012M02", "2012M03", "2012M04", "2012M01",
+                    "2012M02", "2012M03", "2012M04", "2012M01", "2012M02",
+                    "2012M03", "2012M04"),
+    obs_values = c(12.3, NA, NA, NA, 13.2, 16.4, NA, NA, 12.8, 16.8, 19.3, 15)
+)
+
+vintages <- create_vintages(long_format, periodicity = 12)
+```
+
+
+### Vertical format
+
+Here we imagine a series in which each point is published from the 1st of the month.
+
+```{r}
+#| label: vertical-view
+#| echo: false
+#| eval: true
+
+print(vintages$vertical_view)
+```
+
+
+### Long format
+
+```{r}
+#| label: long-view
+#| echo: false
+#| eval: true
+
+print(vintages$long_view)
+```
+
+
+### Horizontal format
+
+```{r}
+#| label: horizontal-view
+#| echo: false
+#| eval: true
+
+print(vintages$horizontal_view)
+```
+
+
+### Diagonal format
+
+```{r}
+#| label: diagonal-view
+#| echo: false
+#| eval: true
+
+print(vintages$diagonal_view)
+```
+
+
+### Data simulation
+
+The package **{rjd3revisions}** also lets you simulate data sets. You can choose :
+
+- the periodicity, 
+- the number of revision periods,
+- the number of study periods
+- the start date of the period
+
+```{r}
+#| label: simulate-data
+#| echo: true
+#| eval: false
+
+long_format <- simulate_long(
+    n_period = 12 * 5,
+    n_revision = 10,
+    periodicity = 12
+)
+```
+
+
+### Creation of vintages
+
+Then you can create your vintages with the function `create_vintages()`
+
+```{r}
+#| label: createing-vintages
+#| echo: true
+#| eval: true
+
+vintages <- create_vintages(long_format, periodicity = 12)
+```
+
+The function `get_revisions()` allows you to compute the revisions and observe the evolutions:
+
+```{r}
+#| label: compute-revisions
+#| echo: true
+#| eval: true
+
+revisions <- get_revisions(vintages, gap = 2)
+```
+
+
+### Plot
+
+You can plot your vintages and the revisions :
+
+:::: {.columns}
+
+::: {.column width="50%"}
+```{r}
+#| label: plot-vintages
+#| echo: true
+#| eval: false
+#| fig-width: 5
+#| fig-height: 3
+#| fig-dpi: 500
+
+plot(vintages)
+```
+:::
+
+::: {.column width="50%"}
+```{r}
+#| label: plot-revisions
+#| echo: true
+#| eval: true
+#| fig-width: 5
+#| fig-height: 4
+#| fig-dpi: 500
+
+plot(revisions)
+```
+:::
+
+::::
+
+
+### Make the anaylsis of the revisions
+
+Finally, you can make the analysis of the revisions with the function `revision_analysis()` :
+
+```{r}
+#| label: revision-analysis
+#| echo: true
+#| eval: true
+
+rslt <- revision_analysis(vintages, gap = 1, view = "diagonal", n.releases = 3)
+```
+
+
+### Creating report
+
+Additionnaly, to create a report and get a summary of the results, you can use
+
+```{r}
+#| label: render-report
+#| echo: true
+#| eval: false
+
+render_report(
+    rslt,
+    output_file = "my_report",
+    output_dir = tempdir(),
+    output_format = "pdf_document"
+)
+```
+
+
+# Trend estimation
+
+
+### Local polynomial methods 
+
+Using `rjd3filters` for trend estimation 
+
+- note detailed in this tutorial
+
+- see examples in Readme file 
+
+- for more details see [JOS Paper, Quartier-La-Tente (2024)](https://journals.sagepub.com/doi/full/10.1177/0282423X241283207)
+
+# Filtering data
+
+
+### Moving Averages
+
+\small 
+
+Moving Averages are used for smoothing and decomposition of time series: 
+
+$$
+M_\theta(X_t)=\sum_{k=-p}^{+f}\theta_kX_{t+k}
+=\left(\sum_{k=-p}^{+f}\theta_kB^{-k}\right)X_{t}
+\text{ with }B^k=X_{t-k}
+$$
+
+**{rjd3filters}** offers features to 
+
+- perform operations on MAs and build more complex ones 
+
+- study their properties (plot,gain, phase...)
+
+
+### Using rjd3filters to wrangle Moving Averages {.allowframebreaks}
+
+(Notation: $B^iX_t=X_{t-i}$ et $F^iX_t=X_{t+i}$)
+
+```{r}
+#| echo: true
+#| eval: true
+
+library("rjd3filters")
+m1 <- moving_average(rep(1, 4), lags = -2) / 4
+m1 
+```
+
+```{r}
+#| echo: true
+#| eval: true
+m2 <- moving_average(rep(1, 3), lags = -1) / 3
+m2 
+```
+
+```{r}
+#| echo: true
+#| eval: true
+m1 + m2
+```
+
+```{r}
+#| echo: true
+#| eval: true
+m1 - m2
+```
+
+```{r}
+#| echo: true
+#| eval: true
+m1 * m2
+```
+
+```{r}
+#| echo: true
+#| eval: true
+m1^2
+```
+
+```{r}
+#| echo: true
+#| eval: true
+rev(m1)
+```
+
+
+### Seasonality suppression {.allowframebreaks}
+
+For quarterly data M2*4
+
+```{r}
+#| echo: true
+#| eval: true
+
+library("rjd3filters")
+e1 <- simple_ma(4, lags = -2)
+e1
+```
+
+```{r}
+#| echo: true
+#| eval: true
+e2 <- simple_ma(4, lags = -1)
+e2
+```
+
+```{r}
+#| echo: true
+#| eval: true
+# averaging MA's
+M2X4 <- (e1 + e2) / 2
+M2X4
+```
+
+```{r}
+#| echo: true
+#| eval: true
+# or convolution 1
+m <- simple_ma(2, lags = 0)
+m
+```
+
+```{r}
+#| echo: true
+#| eval: true
+M2X4_2 <- m * e1
+M2X4_2
+```
+
+```{r}
+#| echo: true
+#| eval: true
+# or convolution 2
+m <- simple_ma(2, lags = -1)
+m
+```
+
+```{r}
+#| echo: true
+#| eval: true
+M2X4_3 <- m * e2
+M2X4_3
+```
+
+```{r}
+#| echo: true
+#| eval: true
+M2X4 - M2X4_2
+M2X4 - M2X4_3
+```
+
+
+### Seasonality extraction {.allowframebreaks}
+
+\footnotesize
+
+M3*3 filter
+
+```{r}
+#| echo: true
+#| eval: true
+m3_1 <- moving_average(rep(1, 3), lags = -1) / 3
+m3_1
+```
+
+```{r}
+#| echo: true
+#| eval: true
+m3_2 <- moving_average(rep(1, 3), lags = -2) / 3
+m3_2
+```
+
+```{r}
+#| echo: true
+#| eval: true
+m3_3 <- moving_average(rep(1, 3), lags = 0) / 3
+m3_3
+```
+
+```{r}
+#| echo: true
+#| eval: true
+
+# averaging MA's
+M3X3 <- (m3_1 + m3_2 + m3_3) / 3
+M3X3
+```
+
+```{r}
+#| echo: true
+#| eval: true
+
+# or convolution 
+M3X3_2 <- m3_1 * m3_1
+```
+
+```{r}
+#| echo: true
+#| eval: true
+
+M3X3 - M3X3_2
+```
+
+
+
+```{r}
+#| echo: true
+#| eval: true
+
+# seasonal format
+# q: horizon, q=0 : last data point
+
+M3X3_s <- M3X3*to_seasonal(M3X3, 4)
+M3X3_s
+
+``` 
+
+
+### Using rjd3filters to wrangle Moving Averages {.allowframebreaks}
+
+\footnotesize
+
+```{r}
+#| label: ex-filters
+#| echo: false
+#| eval: true
+#| fig-width: 7
+#| fig-height: 4
+#| fig-dpi: 500
+
+library("tsbox")
+
+y <- AirPassengers
+y_q <- ts_frequency(AirPassengers, 4, "sum")
+
+plot(y_q)
+lines(y_q * M2X4, col = "#fdc538")
+```
+
+
+```{r}
+#| label: ex-filters-stats
+#| echo: false
+#| eval: true
+#| fig-width: 7
+#| fig-height: 4
+#| fig-dpi: 500
+
+plot_coef(M2X4, main = "Coefficients")
+plot_gain(M2X4, main = "Gain")
+plot_phase(M2X4, main = "Phase")
+```
+
+
+### Simplified X-11 steps {.allowframebreaks}
+
+```{r}
+#| echo: false
+#| eval: true
+
+library("rjd3x11plus")
+
+y <- log(AirPassengers)
+# Y = Trend-Cycle (TC) + Seasonal (S) + Irregular (I)
+
+# build the polynomial corresponding to X11 steps
+tc_1 <- M2X12 <- (simple_ma(12, - 6) + simple_ma(12, - 5))/2
+si_1 <- 1 - tc_1
+M3X3 <- macurves("S3x3") # X11 added asymmetrical coefficients 
+M3X3 
+M3X3_s <- to_seasonal(M3X3, 12)
+s_1 <- M3X3_s * si_1
+s_1_norm <- M2X12 * s_1
+s_1_norm <- impute_last_obs(s_1_norm, n = 6, nperiod = 1)
+s_1_demean <- s_1 - s_1_norm
+s_1_f <- impute_last_obs(s_1_demean, n = 6, nperiod = 12)
+sa_1 <- 1- s_1_f # end of X11 first step
+
+
+h13 <- lp_filter()
+tc_2 <- h13 * sa_1
+
+si_2 <- 1 - tc_2
+s_2 <- M3X3_s * si_2
+s_2_norm <- M2X12 * s_2
+s_2_norm <- impute_last_obs(s_2_norm, n = 6, nperiod = 1)
+s_2_demean <- s_2 - s_2_norm
+s_2_f <- impute_last_obs(s_2_demean, n = 6, nperiod = 12)
+sa_2 <- 1- s_2_f
+c(len = length(sa_2@sfilter), ub = upper_bound(sa_2@sfilter))
+```
+
+
+### Simplified X-11 steps  (2)
+
+```{r}
+#| echo: false
+#| eval: true
+#| fig-width: 7
+#| fig-height: 4
+#| fig-dpi: 500
+
+plot(y, main = "Raw data", col = "red")
+plot(tc_1 * y, main = "Trend-cycle (1)", ylim = range(y)); lines(y, col = "red")
+plot(s_1_f * y, main = "Seasonal (1)")
+plot(sa_1 * y, main = "Seasonally adjusted (1)", ylim = range(y)); lines(y, col = "red")
+
+plot(tc_2 * y, main = "Trend-cycle (2)", ylim = range(y)); lines(y, col = "red")
+plot(s_2_f * y, main = "Seasonal (2)")
+plot(sa_2 * y, main = "Seasonally adjusted (2)", ylim = range(y)); lines(y, col = "red")
+```
+
+
+### (Really) Reproducing X11 steps with `rjd3 filters` 
+
+Possibility de to reproduce X-11 algorithm fully, including correction for extreme values. 
+
+Example in related vignette [https://github.com/rjdverse/rjd3x11plus/blob/develop/vignettes/X11.Rmd](https://github.com/rjdverse/rjd3x11plus/blob/develop/vignettes/X11.Rmd)
+
+
+# Nowcasting
+
+
+### Different model types
+
+```{r}
+#| label: loading-rjd3nowcasting
+#| echo: true
+#| eval: true
+
+library("rjd3nowcasting")
+```
+
+**{rjd3nowcasting}** proposes the implementation of Dynamic Factor model (DFM). These are factor models using a state-space modeling structure to provide consistent forecasts.
+
+The vignette is [here](https://rjdverse.github.io/rjd3nowcasting/).
+
+
+### DFM - equation
+
+This is the state-space representation. 
+
+The underlying idea here is that factors $f_t$ generate and predict variables $y_t$.
+
+$$
+\begin{aligned}
+  y_t &= Z f_t + \epsilon_t, \quad \epsilon_t \sim N(0, R_t) \\
+  f_t &= A_1 f_{t-1} + ... + A_p f_{t-p} + \eta_t, \quad \eta_t \sim N(0, Q_t) 
+\end{aligned}
+$$
+
+
+### But what data? {.allowframebreaks}
+
+Here we will take the data provided by the package. It comes from the French national statistical institute: Insee.
+
+```{r}
+#| label: loading-macrodata-data0
+#| echo: true
+#| eval: true
+
+data("data0", "data1")
+
+tail(data0)
+```
+
+```{r}
+#| label: loading-macrodata-data1
+#| echo: true
+#| eval: true
+
+tail(data1)
+```
+
+
+### But what data?
+
+These two datasets contain data on:
+
+- monthly industrial production index (PVI), 
+- turnover (TURN), 
+- quarterly GDP, 
+- business survey data (BS)
+- other survey data (PMI) for both France and the Eurozone. 
+
+We will use these datasets to illustrate how one of these variable can be nowcasted using the others using a Dynamic Factor model.
+
+
+### Transforming our data
+
+First we have to transform our data into ts object:
+
+```{r}
+#| label: transforming-macrodata
+#| echo: true
+#| eval: true
+
+data0_ts <- data0 |> 
+    select(-date) |> 
+    ts(start = c(2012, 1), frequency = 12)
+data1_ts <- data1 |> 
+    select(-date) |> 
+    ts(start = c(2012, 1), frequency = 12)
+```
+
+Here the `date` column will not be useful in the forecasting.
+
+
+### Creation of our first model
+
+Our model here will initially be agnostic of our data, i.e. it does not depend on the values of our series but on the model we want to give to our forecasts.
+Nevertheless, it is important to know the structure of our data in order to structure our model properly.
+
+```{r}
+#| label: creating-model
+#| echo: true
+#| eval: true
+
+dfm_model <- create_model(
+    nfactors = 2,
+    nlags = 2,
+    factors_type = c("M", "M", "Q", "YoY", "YoY", 
+                     "M", "M", "YoY", "YoY", "YoY"),
+    factors_loading = matrix(data = TRUE, nrow = ncol(data0_ts), ncol = 2),
+    var_init = "Unconditional"
+)
+```
+
+See `?create_model` to get the documentation of the argument.
+
+
+### Estimate the model
+
+Then you can estimate your model with your initial data. 
+
+Parameters can be estimated using different algorithms:
+
+- The function `estimate_pca()` estimates the model parameters using only **Principal Component Analysis (PCA)**. Although this is fast, this approach is not recommended, especially if some series are *quarterly series* or series associated to year-on-year growth rates
+- The function `estimate_em()` estimates the model parameters using the **EM** algorithm;
+- The function `estimate_ml()` estimates the model parameters by **Maximum Likelihood**.
+
+
+```{r}
+#| label: model-estimation
+#| echo: true
+#| eval: true
+
+dfm_estimated <- estimate_ml(dfm_model, data0_ts)
+# dfm_estimated <- estimate_em(dfm_model, data0_ts)
+# dfm_estimated <- estimate_pca(dfm_model, data0_ts)
+```
+
+
+### Get and analyse our results
+
+Finally, you can get your results with the functions `get_results()`{.r} and  `get_forecasts()`{.r}.
+
+```{r}
+#| label: get-results
+#| echo: true
+#| eval: true
+#| fig-width: 9
+#| fig-height: 2
+#| fig-dpi: 500
+
+dfm_results <- get_results(dfm_estimated)
+dfm_forcast <- get_forecasts(dfm_estimated, n_fcst = 3)
+
+plot(dfm_forcast, series_name = "FR_PVI")
+```
+
+
+### Study of news
+
+If you want to compare your forecasts with the actual results, the function `get_news()` :
+
+```{r}
+#| label: news-analysis
+#| echo: true
+#| eval: false
+
+dfm_news <- get_news(dfm_estimates = dfm_estimated, 
+                     new_data = data1_ts, 
+                     target_series = "FR_PVI", n_fcst = 3)
+dfm_news$impacts
+```
+
+\footnotesize
+
+```{r}
+#| label: news-analysis-display
+#| echo: false
+#| eval: true
+
+dfm_news <- get_news(dfm_estimates = dfm_estimated, 
+                     new_data = data1_ts, 
+                     target_series = "FR_PVI", n_fcst = 3)
+impact <- dfm_news$impacts
+for (k in 3:8) {
+    impact[, k] <- round(as.numeric(impact[, k]), 3)
+}
+head(impact)
+```
+
+
+# Conclusion and useful links
+
+### rjdverse family of packages
+
+\footnotesize
+
+Versatile toolbox as multiple algorithms and tools for 
+
+- Seasonal Adjustment, including High-Frequency data 
+
+- Building filters
+
+- Revision Analysis
+
+- Nowcasting
+
+And also (not covered today..)
+
+- Trend and cycle estimation
+
+- Benchmarking and temporal disaggregation
+
+### Useful Links
+
+To get the Software:
+
+-   R Packages giving access to JDemetra+:
+    \url{https://github.com/rjdverse}
+
+-   Graphical User Interface:
+    \url{https://github.com/jdemetra}
+
+Documentation and news:  
+
+-   Online documentation: \url{https://jdemetra-new-documentation.netlify.app/}
+-   Blog: \url{https://jdemetra-universe-blog.netlify.app/}
+-   YouTube channel (Tutorials, Webinars): \url{https://www.youtube.com/@TSwithJDemetraandR}
+
+
+### After the tutorial 
+
+Assistance with JDemetra+ use and SA production process set up can be provided 
+
+If you have any questions, just email us
+
+- \url{anna.smyk@insee.fr}
+
+- \url{tanguy.barthelemy@insee.fr}
+
+
+\vspace{20pt}
+
+THANK YOU FOR YOUR ATTENTION

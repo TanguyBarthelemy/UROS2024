@@ -1,0 +1,1008 @@
+---
+title: "R packages around JDemetra+ - Part 1"
+subtitle: "A versatile toolbox for time series analysis"
+author: "Anna Smyk and Tanguy Barthelemy (Insee, France)"
+format: 
+    beamer:
+        template-partials:
+            - toc.tex
+        include-in-header:
+          - text: |
+              \usepackage{fontspec}
+              \setmonofont{Fira Code}[
+                  Contextuals={Alternate}
+              ]
+              % \usepackage{listings}
+              % \usepackage{lstfiracode}
+              % \ActivateVerbatimLigatures
+              
+              \titlegraphic{\includegraphics[height=0.3\textheight]{img/Logo-Insee-JD.png}}
+              \renewcommand{\url}[1]{\textcolor{blue}{\underline{\href{#1}{#1}}}}
+        institute: "UROS Conference, Athens (GR), Nov 27th 2024"
+        theme: "Frankfurt"
+        toc-title: "Table of Contents"
+        highlight-style: "arrow"
+        toc: false
+        classoption: 
+            - "aspectratio=169"
+            - '`xcolor={dvipsnames}`{=latex}' 
+        slide-level: 3
+        toc-depth: 2
+        #colortheme: "seahorse"
+        navigation: "vertical"
+        section-titles: true
+editor: source
+---
+
+# rjd3 ecosystem overview
+
+
+### JDemetra+: a library of algorithms for time series analysis
+
+\small
+
+JDemetra+ a library of algorithms (written in Java) on:
+
+- Seasonal Adjustment (Historical domain)
+
+- Trend and cycle estimation
+
+- Benchmarking and temporal disaggregation
+
+- Revision Analysis
+
+- Nowcasting 
+
+They can be accessed via Graphical user-interface (GUI) and/or R packages. 
+
+JDemetra+ is an open source software, officially recommended by Eurostat since 2015 for Seasonal Adjustment to Eurosystem members.
+
+### JDemetra + on Github 
+
+\small
+
+-   Repository dedicated to Java algorithms and Graphical User interface (+ extensions) : \url{https://github.com/jdemetra}
+
+-   Repository dedicated to R packages: \url{https://github.com/rjdverse}
+
+For each R package:
+
+-   Readme files
+
+-   Documentation of (almost) all functions in (almost) all R packages
+
+-   GitHub pages (linked in JD+ on-line documentation, \url{https://jdemetra-new-documentation.netlify.app/})  
+
+
+### JDemetra+ algorithms in R (1/3)
+
+\footnotesize
+
+By domain of use:
+
+- Seasonal adjustment of low frequency data
+
+    - rjd3x13 (Reg-Arima + x11 based decomposition)
+    - rjd3tramoseats (Tramo+ AMB decomposition)
+    - rjd3sts (Basic structural models, SA)
+    - rjd3stl (SA with Local regression)
+    
+- Seasonal adjustment of high frequency data
+
+    - rjd3highfreq (extended airline model + extended AMB decomposition)
+    - rjd3x11plus (extended X11)
+    - rjd3sts (basic structural models, SA)
+    - rjd3stl (SA with local regression)
+
+
+### JDemetra+ algorithms in R (2/3)
+
+By domain of use:
+
+- Filtering and trend estimation
+
+    - rjd3filters
+    - rjd3x11plus (local polynomials)
+
+- General purpose tools
+
+    - rjd3toolkit (specifications, tests, regressors)
+    - rjd3sts (state space framework)
+    - rjd3filters (generating moving averages)
+
+    
+### JDemetra+ algorithms in R (3/3)
+
+By domain of use:
+
+- Non Seasonal Adjustment related tools 
+
+    - rjd3bench (benchmarking and temporal disaggregation)
+    - rjd3revisions (revision analysis)
+    - rjd3nowcasting (...nowcasting !)
+    
+- Tools related to GUI (workspaces)
+    
+    - rjd3providers (input data)
+    - rjd3workspace (workspace wrangling)
+
+
+### Installing rjd3 packages: Java configuration 
+
+You can find [here](https://jdemetra-new-documentation.netlify.app/\#Rconfig) : \url{https://jdemetra-new-documentation.netlify.app/\#Rconfig} a tutorial to configure Java on your computer.
+
+
+### Installing rjd3 packages: latest release 
+
+\small
+
+```{r}
+#| label: installing-rjdverse-latest-release
+#| echo: true
+#| eval: false
+# install.packages("remotes")
+remotes::install_github("rjdverse/rjd3toolkit@*release")
+remotes::install_github("rjdverse/rjd3x13@*release")
+remotes::install_github("rjdverse/rjd3tramoseats@*release")
+remotes::install_github("rjdverse/rjd3providers@*release")
+remotes::install_github("rjdverse/rjd3filters@*release")
+remotes::install_github("rjdverse/rjd3sts@*release")
+remotes::install_github("rjdverse/rjd3highfreq@*release")
+remotes::install_github("rjdverse/rjd3x11plus@*release")
+remotes::install_github("rjdverse/rjd3stl@*release")
+remotes::install_github("rjdverse/rjd3workspace@*release")
+remotes::install_github("rjdverse/rjd3revisions@*release")
+remotes::install_github("rjdverse/rjd3bench@*release")
+remotes::install_github("rjdverse/rjd3nowcasting@*release")
+remotes::install_github("AQLT/ggdemetra3@*release") # additional graphics
+```
+
+
+### Installing rjd3 packages: runiverse
+
+\footnotesize
+
+```{r}
+#| label: installing-rjdverse-runiverse
+#| echo: true
+#| eval: false
+# install.packages("remotes")
+options(repos = c(runiverse = "https://rjdverse.r-universe.dev",
+                  CRAN = "https://cloud.r-project.org"))
+
+install.packages("rjd3toolkit")
+install.packages("rjd3x13")
+install.packages("rjd3tramoseats")
+install.packages("rjd3providers")
+install.packages("rjd3filters")
+install.packages("rjd3sts")
+install.packages("rjd3highfreq")
+install.packages("rjd3x11plus")
+install.packages("rjd3stl")
+install.packages("rjd3workspace")
+install.packages("rjd3revisions")
+install.packages("rjd3bench")
+install.packages("rjd3nowcasting")
+install.packages("ggdemetra3", repos = c("https://aqlt.r-universe.dev",
+                                         "https://cloud.r-project.org"))
+```
+
+
+### Installing rjd3 packages (develop version)
+
+\footnotesize
+
+Installing (the develop version) from the GitHub home repo
+
+```{r}
+#| label: installing-rjdverse
+#| echo: true
+#| eval: false
+
+# install.packages("remotes")
+remotes::install_github("rjdverse/rjd3toolkit")
+remotes::install_github("rjdverse/rjd3x13")
+remotes::install_github("rjdverse/rjd3tramoseats")
+remotes::install_github("rjdverse/rjd3providers")
+remotes::install_github("rjdverse/rjd3filters")
+remotes::install_github("rjdverse/rjd3sts")
+remotes::install_github("rjdverse/rjd3highfreq")
+remotes::install_github("rjdverse/rjd3x11plus")
+remotes::install_github("rjdverse/rjd3stl")
+remotes::install_github("rjdverse/rjd3workspace")
+remotes::install_github("rjdverse/rjd3revisions")
+remotes::install_github("rjdverse/rjd3bench")
+remotes::install_github("rjdverse/rjd3nowcasting")
+remotes::install_github("AQLT/ggdemetra3") # additional graphics
+```
+
+
+### Loading packages
+
+```{r}
+#| label: loading-rjdverse
+#| echo: true
+#| eval: true
+
+library("rjd3toolkit")
+library("rjd3x13")
+library("rjd3tramoseats")
+library("rjd3filters")
+library("rjd3highfreq")
+library("rjd3x11plus")
+library("rjd3revisions")
+library("rjd3bench")
+library("rjd3nowcasting")
+library("rjd3sts")
+library("rjd3stl")
+library("ggdemetra3")
+```
+
+
+# Time series tools
+
+### Time series tools
+
+JDemetra+ 3.x offers stand alone tools (mainly in `rjd3toolkit`)
+
+-   Tests (seasonality, auto-correlation, normality, randomness...)
+
+-   (Fast) Arima Modelling 
+
+-   Flexible Calendar regressors generation 
+
+-   Auxiliary variables for pre-adjustment in seasonal adjustment
+
+-   Spectral analysis
+
+-   Detection of multiple seasonal patterns (Canova-Hansen test)
+
+-   State space frame work as a toolbox (`rjd3sts`)
+
+
+
+### Testing for seasonality
+
+In **{rjd3toolkit}**:
+
+- Canova-Hansen (`rjd3toolkit::seasonality_canovahansen_trigs()`)
+- X-12 combined test (`rjd3toolkit::seasonality_combined()`)
+- F-test on seasonal dummies (`rjd3toolkit::seasonality_f()`)
+- Friedman Seasonality Test (`rjd3toolkit::seasonality_friedman()`)
+- Kruskall-Wallis Seasonality Test (`rjd3toolkit::seasonality_kruskalwallis()`)
+- Periodogram Seasonality Test (`rjd3toolkit::seasonality_periodogram()`)
+- QS Seasonality Test (`rjd3toolkit::seasonality_qs()`)
+
+
+## Sarima modelling in rjdverse
+
+### Sarima modelling in rjd3verse
+
+\footnotesize
+
+- (Reg)-Sarima model estimation: `rjd3toolkit::sarima_estimate`
+
+- (Reg)-Sarima model identification and estimation pre-adjustment part of Seasonal Adjustment Processes, available in **rjd3x13** and **rjd3tramoseats**  packages
+
+example `rjd3x13::regarima`
+
+
+### Sarima estimation 
+
+\footnotesize
+
+```{r}
+#| label: arima-estimation
+#| echo: true
+#| eval: true
+
+library("microbenchmark")
+
+y_example <- log(rjd3toolkit::ABS$X0.2.09.10.M)
+microbenchmark(
+    JD_arima = rjd3toolkit::sarima_estimate(
+        x = y_example,
+        order = c(2, 1, 1), seasonal = list(order = c(0, 1, 1), period = 12)
+    ),
+    built_in_arima = stats::arima(
+        x = y_example,
+        order = c(2, 1, 1), seasonal = list(order = c(0, 1, 1), period = 12)
+    ), times = 10
+)
+```
+
+
+
+### Generating User-defined auxilary variables 
+
+What is useful for sa and examples below
+
+- Calendar correction : specific regressors, see below in SA part
+
+
+### Outliers and intervention variables 
+
+- Outliers regressors (AO, LS, TC, SO, Ramp (quadratic to be added)
+- Trigonometric variables
+- Seasonal dummies 
+
+
+### Example of outliers {.allowframebreaks} 
+
+\footnotesize
+
+```{r}
+#| label: creating-outliers
+#| echo: true
+#| eval: true
+#| fig-width: 7
+#| fig-height: 4
+#| fig-dpi: 500
+
+library("rjd3toolkit")
+
+# ts for initialization
+s <- ts(0, start = 2000, end = 2005, frequency = 12)
+# You can use an initialization ts or provide frequency, start and length
+# Creating outliers
+ao <- ao_variable(s = s, date = "2001-03-01")
+ls <- ls_variable(s = s, date = "2001-01-01")
+tc <- tc_variable(s = s, date = "2001-01-01", rate = 0.5)
+# Customizable rate
+so <- so_variable(s = s, date = "2003-05-01")
+ramp <- ramp_variable(s = s, range = c("2001-01-01", "2001-12-01"))
+ts.plot(ts.union(ao, ls, tc, so, ramp),
+        col = c("red", "green", "Blue", "blue", "black"))
+```
+
+
+# Seasonal adjustment using JDemetra+ in R 
+
+
+## Low frequency data
+
+
+### Seasonal Adjustment Algorithms in JDemetra+
+
+![](img/SA_Algos.png)
+
+Two categories of algorithms for low frequency data:
+
+-   Historical core (main): X-13-Arima and Tramo-Seats
+
+-   Version 3 (recent) additional algorithms
+
+
+### Additional algorithms
+
+Tramo-Seats and X-13-Arima share a very similar and sophisticated
+pre-adjustment process for the Arima model selection phase.
+
+For additional algorithms, the new philosophy is to offer
+
+-   A simplified pre-adjustment on the arima modelling side, reduced to
+    airline model
+-   Several enhanced decomposition options
+
+    -   **stl+** ("+" stands for airline based pre-adjustment)
+    -   **x12+**: airline based pre-adjustment + new trend estimation
+        filters (Local Polynomials)
+    -   **seats+** (to come in the target v3 version): airline based
+        pre-adjustment + AMB decomposition
+        
+
+## Quick Launch with default specifications 
+
+
+### Seasonal Adjustment: common steps 
+
+- Testing for seasonality (identify seasonal patterns for HF data)
+- Pre-treatment 
+- Create customised variables for pre-treatment (e.g calendar regressors)
+- Decomposition 
+- Retrieve output series 
+- Retrieve diagnostics 
+- Customize parameters 
+- Refresh data (bonus)
+- ...
+- Repeat...
+
+Acceptable frequencies: data with  $p$ in ${2,3,4,6,12}$ is admissible in all algorithms.
+
+
+### Importing data
+
+Here we import the data from the french industrial production index:
+
+```{r}
+#| label: import-data-quarto
+#| echo: false
+#| eval: true
+
+library("readr")
+library("dplyr")
+
+ipi <- read_delim("../../Data/IPI_nace4.csv", delim = ";") |>
+    mutate(date = as.Date(date, format = "%d/%m/%Y"),
+           across(!date, as.numeric))
+y_raw <- ts(data = ipi[, "RF3030"], frequency = 12, start = c(1990, 1))
+```
+
+We create a ts object with one of the series:
+
+```{r}
+#| label: import-data
+#| echo: true
+#| eval: false
+
+library("readr")
+library("dplyr")
+
+ipi <- read_delim("Data/IPI_nace4.csv", delim = ";") |>
+    mutate(date = as.Date(date, format = "%d/%m/%Y"),
+           across(!date, as.numeric))
+y_raw <- ts(data = ipi[, "RF3030"], frequency = 12, start = c(1990, 1))
+```
+
+
+## Quick launch with default specifications 
+
+In this section, we will use the packages **{rjd3x13}** and **{rjd3tramoseats}**:
+
+```{r}
+#| label: loading-sa-pkg
+#| echo: true
+#| eval: true
+
+library("rjd3x13")
+library("rjd3tramoseats")
+```
+
+
+### Different processing {.allowframebreaks} 
+
+Running a full Seasonal Adjustment processing
+
+```{r}
+#| label: sa-with-rj3tramoseats
+#| echo: true
+#| eval: true
+
+# X13
+sa_x13_v3 <- rjd3x13::x13(y_raw, spec = "RSA5")
+
+# Tramo seats
+sa_ts_v3 <- rjd3tramoseats::tramoseats(y_raw, spec = "RSAfull")
+```
+
+Running only pre-adjustment
+
+```{r}
+#| label: sa-with-rjd3x13
+#| echo: true
+#| eval: true
+
+# X13
+sa_regarima_v3 <- rjd3x13::regarima(y_raw, spec = "RG5c")
+
+# Tramo seats
+sa_tramo_v3 <- rjd3tramoseats::tramo(y_raw, spec = "TRfull")
+
+# "fast_XXX" versions...(just results, cf output structure)
+```
+
+Running only decomposition
+
+```{r}
+#| label: x11-with-rjd3x13
+#| echo: true
+#| eval: true
+
+# X11 is a specific function
+x11_v3 <- rjd3x13::x11(y_raw)
+```
+
+
+## Retrieving output and data visualization
+
+
+### "Model_sa" object structure {.allowframebreaks} 
+
+Results vs specification...and then by domain
+
+\footnotesize
+
+```{r}
+#| label: x13-with-rjd3x13
+#| echo: true
+#| eval: true
+
+# Model_sa = sa_x13_v3
+sa_x13_v3 <- rjd3x13::x13(y_raw, spec = "RSA5")
+```
+
+```{r}
+#| label: se-balader-dans-x13
+#| echo: true
+#| eval: false
+
+sa_x13_v3$result
+sa_x13_v3$estimation_spec
+sa_x13_v3$result_spec
+sa_x13_v3$user_defined
+```
+
+
+### Retrieve output series 
+
+Input and output series are TS objects in R
+
+- final series
+
+\footnotesize
+
+```{r}
+#| label: final-d11
+#| echo: true
+#| eval: false
+
+# final seasonally adjusted series
+sa_x13_v3$result$final$d11final
+```
+
+```{r}
+#| label: final-d11-display
+#| echo: false
+#| eval: true
+
+# final seasonally adjusted series
+window(sa_x13_v3$result$final$d11final, start = 2015)
+```
+
+
+### Series from decomposition
+
+check output names 
+
+\footnotesize
+
+```{r}
+#| label: d5-rjd3x13
+#| echo: true
+#| eval: false
+
+# tables from D1 to D13
+sa_x13_v3$result$decomposition$d5
+```
+
+```{r}
+#| label: d5-rjd3x13-display
+#| echo: false
+#| eval: true
+
+# tables from D1 to D13
+window(sa_x13_v3$result$decomposition$d5, start = 2015)
+```
+
+
+### Retrieving Diagnostics
+
+Just fetch the needed objects in the relevant part of the output structure or print the whole "model"
+
+```{r}
+#| label: diag-rjd3x13
+#| echo: true
+#| eval: true
+
+sa_x13_v3$result$diagnostics$td.ftest.i
+```
+
+What is missing (series or diagnostics) can be retrieved adding user-defined output in the options 
+
+
+### Retrieving user defined-output (1/2) {.allowframebreaks}
+
+First define the vector of objects you wish to add
+
+Lists of available diagnostics or series 
+
+\footnotesize
+
+```{r}
+#| label: ud-diagnostics
+#| echo: true
+#| eval: false
+
+rjd3x13::userdefined_variables_x13("regarima") # restriction
+rjd3x13::userdefined_variables_x13()
+
+rjd3tramoseats::userdefined_variables_tramoseats("tramo") # restriction
+rjd3tramoseats::userdefined_variables_tramoseats("tramoseats")
+```
+
+
+### Retrieve user defined-output (2/2)
+
+Select the objects and customize estimation function
+
+\footnotesize
+
+```{r}
+#| label: ud-output
+#| echo: true
+#| eval: true
+
+ud <- rjd3x13::userdefined_variables_x13()[15:17] # b series
+ud
+sa_x13_v3_ud <- rjd3x13::x13(y_raw, "RSA5c", userdefined = ud)
+
+# Retrieve the object
+sa_x13_v3_ud$user_defined$cal
+```
+
+```{r}
+#| label: ud-output-display
+#| echo: true
+#| eval: false
+
+# Get all output
+sa_x13_v3_ud$user_defined # remainder of the names
+```
+
+
+### Plots and data visualisation {.allowframebreaks} 
+
+EXAMPLES
+
+- final + "autoplot" layout 
+- regarima not available (yet ?) !!!
+- SI ratios (ggplot layout)
+
+```{r}
+#| label: plot-si-ratio
+#| echo: true
+#| eval: true
+#| fig-width: 9
+#| fig-height: 4
+#| fig-dpi: 500
+
+library("ggdemetra3")
+siratioplot(sa_x13_v3)
+```
+
+
+```{r}
+#| label: autoplot
+#| echo: true
+#| eval: true
+#| fig-width: 9
+#| fig-height: 4
+#| fig-dpi: 500
+
+library("ggplot2")
+autoplot(sa_x13_v3)
+```
+
+
+## Customizing specifications
+
+
+### Customising specifications: general steps 
+
+To customise a specification:
+
+- start with a valid specification, usually one of the default specs (equivalent to cloning a spec in GUI)
+- create a new specification
+- apply the new specification to raw series 
+
+
+### Customising specifications: local functions 
+
+\small
+
+Use of specific `set_` functions
+
+- for the pre-processing step (functions defined in `rjd3toolkit`):
+
+`set_arima()`, `set_automodel()`, `set_basic()`, `set_easter()`, `set_estimate()`, `set_outlier()`, `set_tradingdays()`, `set_transform()`, `add_outlier()` and `remove_outlier()`, `add_ramp()` and `remove_ramp()`, `add_usrdefvar()`
+
+- for the decomposition step with X11 (function defined in `rjd3x13`):
+`set_x11()`
+
+- for the decomposition step with Tramo-Seats (function defined in `rjd3tramoseats`):
+`set_seats()`
+
+- for the benchmarking step (function defined in `rjd3toolkit`):
+`set_benchmarking()`
+
+
+### Simple examples {.allowframebreaks}
+
+```{r}
+#| label: custom-spec-default
+#| echo: true
+#| eval: true
+
+# start with default spec
+spec_1 <- spec_x13("RSA3")
+# or start with existing spec (no extraction function needed)
+# spec_1 <- sa_x13_v3_UD$estimation_spec
+```
+
+```{r}
+#| label: custom-spec-out
+#| echo: true
+#| eval: true
+# set a new spec
+## add outliers
+spec_2 <- rjd3toolkit::add_outlier(spec_1,
+    type = "AO", c("2015-01-01", "2010-01-01")
+)
+```
+
+```{r}
+#| label: custom-spec-td
+#| echo: true
+#| eval: true
+## set trading days
+spec_3 <- rjd3toolkit::set_tradingdays(spec_2,
+    option = "workingdays"
+) # JD+ regressors
+```
+
+```{r}
+#| label: custom-spec-x11
+#| echo: true
+#| eval: true
+# set x11 options
+spec_4 <- set_x11(spec_3, henderson.filter = 13)
+# apply with `fast.x13` (results only)
+fast_x13(y_raw, spec_4)
+```
+
+
+### Adding user-defined calendar or other regressors
+
+When adding regressors which are not predefined (like outliers or ramps): 
+
+- `rjd3toolkit::set_tradingdays`  to be used when allocating a regressor to the **calendar** component
+- `rjd3toolkit::add_usrdefvar` is used for any other component
+
+
+### Step 1: Creating regressors (1/2)
+
+\small
+
+```{r}
+#| label: creating-french-calendar
+#| echo: true
+#| eval: true
+
+# create national (or other) calendar if needed
+frenchCalendar <- national_calendar(days = list(
+    fixed_day(7, 14), # Bastille Day
+    fixed_day(5, 8, validity = list(start = "1982-05-08")), # End of 2nd WW
+    special_day("NEWYEAR"),
+    special_day("CHRISTMAS"),
+    special_day("MAYDAY"),
+    special_day("EASTERMONDAY"),
+    special_day("ASCENSION"),
+    special_day("WHITMONDAY"),
+    special_day("ASSUMPTION"),
+    special_day("ALLSAINTSDAY"),
+    special_day("ARMISTICE")
+))
+```
+
+
+### Step 1: Creating regressors (2/2)
+
+\footnotesize
+
+```{r}
+#| label: creating-calendar-regressors
+#| echo: true
+#| eval: true
+
+# create set of 6 regressors every day is different, contrast with Sunday, based on french national calendar
+regs_td <- rjd3toolkit::calendar_td(
+    calendar = frenchCalendar,
+    # formats the regressor like your raw series (length, frequency..)
+    s = y_raw,
+    groups = c(1, 2, 3, 4, 5, 6, 0),
+    contrasts = TRUE
+)
+
+# create an intervention variable (to be allocated to "trend")
+iv1 <- intervention_variable(
+    s = y_raw,
+    starts = "2015-01-01",
+    ends = "2015-12-01"
+)
+```
+
+regressors can be any TS object
+
+
+### Step 2: Creating a modelling context 
+
+\small
+
+Modelling context is necessary for any external regressor (new v3 set up)
+
+```{r}
+#| label: create-modeling-context
+#| echo: true
+#| eval: true
+
+# Gather regressors into a list
+my_regressors <- list(
+    Monday = regs_td[, 1],
+    Tuesday = regs_td[, 2],
+    Wednesday = regs_td[, 3],
+    Thursday = regs_td[, 4],
+    Friday = regs_td[, 5],
+    Saturday = regs_td[, 6],
+    reg1 = iv1
+)
+
+# create modelling context
+my_context <- modelling_context(variables = my_regressors)
+# check variables present in modelling context
+rjd3toolkit::.r2jd_modellingcontext(my_context)$getTsVariableDictionary()
+```
+
+
+### Step 3: Adding regressors to specification (calendar) 
+
+```{r}
+#| label: add-regressors-to-spec
+#| echo: true
+#| eval: true
+
+# Add calendar regressors to spec
+x13_spec <- rjd3x13::x13_spec("rsa3")
+x13_spec_user_defined <- rjd3toolkit::set_tradingdays(
+    x = x13_spec,
+    option = "UserDefined",
+    uservariable = c(
+        "r.Monday", "r.Tuesday", "r.Wednesday",
+        "r.Thursday", "r.Friday", "r.Saturday"
+    ),
+    test = "None"
+)
+```
+
+
+### Step 3: Adding regressors to specification (trend) 
+
+```{r}
+#| label: add-trend-to-spec
+#| echo: true
+#| eval: true
+
+# Add intervention variable to spec, choosing the component to allocate the effects to TREND
+x13_spec_user_defined <- add_usrdefvar(
+    x = x13_spec_user_defined,
+    group = "r",
+    name = "reg1",
+    label = "iv1",
+    regeffect = "Trend"
+)
+```
+
+```{r}
+#| label: retrieve-ud-var
+#| echo: true
+#| eval: false
+
+x13_spec_user_defined$regarima$regression$users
+```
+
+
+### Step 4: Estimating with context 
+
+Applying full user-defined specification 
+
+```{r}
+#| label: estimation-with-context
+#| echo: true
+#| eval: true
+
+sa_x13_ud <- rjd3x13::x13(y_raw, x13_spec_user_defined, context = my_context)
+sa_x13_ud$result$preprocessing
+```
+
+```{r}
+#| label: retrieve-estimation-with-context
+#| echo: true
+#| eval: false
+
+sa_x13_ud$result$preprocessing
+```
+
+The process would be identical using `rjd3tramoseats::tramoseats`
+
+
+### Seasonal adjustment of unusual frequencies with rjd3x11 plus  {.allowframebreaks}
+
+
+Example of periodicity $p$: decomposition with **rjd3x11plus**
+
+Production prices in agriculture : some products are not available several months. 
+
+But the data are not missing, they are just not available and never will be : it's structural !
+
+
+```{r}
+#| echo: true
+#| eval: false
+
+fl <- read.csv("Data/fruits_legumes_base_2015_F4.csv", sep = ";")
+fl[fl[] == 0] <- NA
+strawberry <- fl$FL6
+```
+
+```{r}
+#| echo: false
+#| eval: true
+fl <- read.csv("../../Data/fruits_legumes_base_2015_F4.csv", sep = ";")
+fl[fl[] == 0] <- NA
+strawberry <- matrix(round(fl$FL6, 3), ncol = 12, byrow = TRUE)
+colnames(strawberry) <- month.abb
+rownames(strawberry) <- 2010:2023
+tail(strawberry)
+```
+
+Data treatment :
+
+1) Remove the useless months
+
+```{r}
+#| echo: true
+#| eval: true
+strawberry <- matrix(fl$FL6, nrow = 12)[, 10:14]
+strawberry_cut <- as.numeric(strawberry[-c(1:2, 8:12), ])
+```
+
+2) Use the function `x11plus` from the package **{rjd3x11plus}**
+
+```{r}
+#| echo: true
+#| eval: true
+
+library("rjd3x11plus")
+mod_strawberry <- x11plus(
+    y = strawberry_cut,
+    period = 5,
+    mul = TRUE,
+    trend.horizon = 5 + 2,  # 1/2 Filter length : not too long vs p
+    trend.degree = 3,                         # Polynomial degree
+    trend.kernel = "Henderson",               # Kernel function
+    trend.asymmetric = "CutAndNormalize",     # Truncation method
+    seas.s0 = "S3X1", seas.s1 = "S3X1",       # Seasonal filters
+    extreme.lsig = 1.5, extreme.usig = 2.5   # Sigma-limits
+)
+```
+
+3) Re-assemble the data
+
+```{r}
+#| echo: true
+#| eval: true
+strawberry_sa <- mod_strawberry$decomposition$sa |>
+    matrix(nrow = 5)
+strawberry_sa <- as.numeric(rbind(NA, NA, strawberry_sa, NA, NA, NA, NA, NA))
+
+y <- as.numeric(strawberry)
+sa <- strawberry_sa
+```
+
+4) Plot the output
+```{r}
+#| echo: true
+#| eval: true
+plot(y, type = "l")
+lines(sa, col = "blue")
+```
+
